@@ -117,21 +117,9 @@ metadata:
   name: memcached-operator-manager-role
 rules:
 - apiGroups:
-  - cache.example.com
-  resources:
-  - memcacheds
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
   - "*"
   resources:
-  - deployments
+  - "*"
   verbs:
   - create
   - delete

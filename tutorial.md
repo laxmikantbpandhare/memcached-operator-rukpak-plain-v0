@@ -74,7 +74,10 @@ make docker-build docker-push
 
 ### Generating CRD manifests 
 
+Make a directory and generate the manifests
+
 ```sh
+$ mkdir manifest
 $ kustomize build config/default > manifest/manifest.yaml
 ```
 
@@ -82,41 +85,57 @@ Need to update `manifest.yaml` file.
 
 Update image tag from `controller:latest` to `example.com/memcached-operator:v0.0.1`
 
-Then, modify ClusterRole as shown below.
+Then, remove `ClusterRole` with name `memcached-operator-manager-role` and `ClsuerRoleBinding` with name `memcached-operator-manager-rolebinding`.
+
+Now, create the `ScopeTemplate` as shown below.
 
 ```yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+apiVersion: operators.io.operator-framework/v1alpha1
+kind: ScopeTemplate
 metadata:
-  creationTimestamp: null
-  name: memcached-operator-manager-role
-rules:
-- apiGroups:
-  - "*"
-  resources:
-  - "*"
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - cache.example.com
-  resources:
-  - memcacheds/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - cache.example.com
-  resources:
-  - memcacheds/status
-  verbs:
-  - get
-  - patch
-  - update
+  name: scopetemplate-sample-manager
+spec:
+  clusterRoles:
+  - generateName: manager-role
+    rules:
+    - apiGroups:
+      - "*"
+      resources:
+      - "*"
+      verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    - apiGroups:
+      - cache.example.com
+      resources:
+      - memcacheds/finalizers
+      verbs:
+      - update
+    - apiGroups:
+      - cache.example.com
+      resources:
+      - memcacheds/status
+      verbs:
+      - get
+      - patch
+      - update
+    subjects:
+    - kind: ServiceAccount
+      name: memcached-operator-controller-manager
+      namespace: memcached-operator-system
+```
+
+Before applying `ScopeTemplate` manifests, we need to install CRD for the same from `oria-operator`.
+
+Go to `oria-operator` and run below command.
+
+```
+$ make install
 ```
 
 Then, apply manifest and look for successful execution.
@@ -163,48 +182,6 @@ Then, check the pod logs again and now you will be able to see that pod is
 complaining about RBAC.
 
 
-Now, create the `ScopeTemplate` as shown below.
-
-```yaml
-apiVersion: operators.io.operator-framework/v1alpha1
-kind: ScopeTemplate
-metadata:
-  name: scopetemplate-sample-manager
-spec:
-  clusterRoles:
-  - generateName: manager-role
-    rules:
-    - apiGroups:
-      - "*"
-      resources:
-      - "*"
-      verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-    - apiGroups:
-      - cache.example.com
-      resources:
-      - memcacheds/finalizers
-      verbs:
-      - update
-    - apiGroups:
-      - cache.example.com
-      resources:
-      - memcacheds/status
-      verbs:
-      - get
-      - patch
-      - update
-    subjects:
-    - kind: ServiceAccount
-      name: memcached-operator-controller-manager
-      namespace: memcached-operator-system
-```
 
 Create ScopeInstance that refers to ScopeTemplate.
 
@@ -217,10 +194,9 @@ spec:
   scopeTemplateName: scopetemplate-sample-manager
 ```
 
-Now, install and run the `oria-operator`
+Now, run the `oria-operator`
 
 ```
-$ make install
 $ make run
 ```
 
